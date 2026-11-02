@@ -7,39 +7,34 @@
 //
 
 import SwiftUI
-import SwiftUIIntrospect
 
 @MainActor
 public struct AutosizingList<Content: View>: View {
-    
+
     var content: Content
-    
+
     @State private var observation: NSKeyValueObservation?
     @State private var tableContentHeight: CGFloat = 0.0
-    
+
     public init(@ViewBuilder content: @escaping () -> Content) {
         self.content = content()
     }
-    
+
     public var body: some View {
         List {
             content
         }
-        .introspect(.list, on: .iOS(.v15)) { tableView in
-            introspectScrollView(tableView)
-        }
-        .introspect(.list, on: .iOS(.v16, .v17, .v18)) { collectionView in
-            introspectScrollView(collectionView)
-        }
+        .background(ScrollViewResolver { configure(scrollView: $0) })
         .frame(height: tableContentHeight)
     }
 
-    private func introspectScrollView(_ scrollView: UIScrollView) {
+    private func configure(scrollView: UIScrollView) {
+        guard observation == nil else { return }
         scrollView.backgroundColor = .clear
         scrollView.isScrollEnabled = false
         tableContentHeight = scrollView.contentSize.height
-        observation = scrollView.observe(\.contentSize) { scrollView, value in
-            DispatchQueue.main.async {
+        observation = scrollView.observe(\.contentSize) { scrollView, _ in
+            Task { @MainActor in
                 tableContentHeight = scrollView.contentSize.height
             }
         }

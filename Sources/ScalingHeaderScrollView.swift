@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import SwiftUIIntrospect
 
 public enum SnapHeaderState: Equatable {
     case expanded
@@ -189,6 +188,9 @@ public struct ScalingHeaderScrollView<Header: View, Content: View>: View {
                 content
                     .offset(y: contentOffset)
                     .frameGetter($contentFrame.frame)
+                    .background(
+                        ScrollViewResolver { configure(scrollView: $0) }
+                    )
                     .onChange(of: contentFrame.frame) { frame in
                         pullToRefreshInProgress = frame.minY - globalGeometry.frame(in: .global).minY > 20.0
                     }
@@ -226,9 +228,6 @@ public struct ScalingHeaderScrollView<Header: View, Content: View>: View {
                 .offset(y: -(contentFrame.startingRect?.maxY ?? UIScreen.main.bounds.height))
             }
             .animation(headerAnimation, value: shouldSnapTo)
-            .introspect(.scrollView, on: .iOS(.v15, .v16, .v17, .v18, .v26)) { scrollView in
-                configure(scrollView: scrollView)
-            }
             .onAppear {
                 snapInitialScrollPosition()
             }
@@ -256,7 +255,7 @@ public struct ScalingHeaderScrollView<Header: View, Content: View>: View {
         if let didPullToRefresh = didPullToRefresh {
             scrollViewDelegate.didPullToRefresh = {
                 if !isPullToRefreshEnabled { return }
-                Task {
+                Task { @MainActor in
                     pullToLoadMoreInProgress = false
                     pullToRefreshInProgress = true
                     withAnimation { isLoading = true }
@@ -268,7 +267,7 @@ public struct ScalingHeaderScrollView<Header: View, Content: View>: View {
         if let didPullToLoadMore = didPullToLoadMore {
             scrollViewDelegate.didPullToLoadMore = {
                 if !isPullToLoadMoreEnabled { return }
-                Task {
+                Task { @MainActor in
                     pullToLoadMoreInProgress = true
                     pullToRefreshInProgress = false
                     withAnimation { isLoading = true }
@@ -381,7 +380,7 @@ public struct ScalingHeaderScrollView<Header: View, Content: View>: View {
     }
 
     private func getGeometryReaderVsScrollView(scrollGeometry: GeometryProxy, globalGeometry: GeometryProxy) -> CGFloat {
-        getScrollOffset() - scrollGeometry.frame(in: .global).minY + globalGeometry.frame(in: .global).minY
+        getScrollOffset() - scrollGeometry.frame(in: .global).minY + globalGeometry.frame(in: .global).minY - (globalGeometry.frame(in: .global).minX * 2)
     }
 
     private func getOffsetForHeader() -> CGFloat {
