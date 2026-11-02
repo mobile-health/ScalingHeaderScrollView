@@ -24,6 +24,11 @@ final class ScalingHeaderScrollViewDelegate: NSObject, ObservableObject, UIScrol
     // MARK: - UIScrollViewDelegate
 
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        // `getScrollOffset` reads `uiScrollView`, not this argument. After a
+        // scroll view rebuild the stored instance is the detached one.
+        if uiScrollView !== scrollView {
+            uiScrollView = scrollView
+        }
         didScroll()
         let maxYOffset = scrollView.contentSize.height - scrollView.bounds.height
         if scrollView.contentOffset.y >= maxYOffset {
